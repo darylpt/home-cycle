@@ -1,0 +1,24 @@
+{% extends "households/base.html" %}
+{% block title %}{{ page_title }} · HomeCycle{% endblock %}
+{% block content %}
+<section class="form-card" aria-labelledby="completion-form-title">
+    <p class="eyebrow">{{ task.name }}</p>
+    <h1 id="completion-form-title">{{ page_title }}</h1>
+    <p class="intro">Record the date this task was last done.</p>
+    <form method="post" class="form-stack">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+            <div class="field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div class="form-errors" role="alert">{{ field.errors }}</div>{% endif %}
+            </div>
+        {% endfor %}
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">{{ submit_label }}</button>
+            <a class="button button-quiet" href="{% url 'task_detail' task.pk %}">Cancel</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

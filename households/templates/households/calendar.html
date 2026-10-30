@@ -1,0 +1,175 @@
+{% extends "households/base.html" %}
+{% block title %}Calendar · HomeCycle{% endblock %}
+{% block main_class %}page-shell page-shell-wide{% endblock %}
+{% block content %}
+<section class="page-heading" aria-labelledby="calendar-title">
+    <div>
+        <p class="eyebrow">Your household</p>
+        <h1 id="calendar-title">Calendar</h1>
+        <p class="intro">See what was completed and what is suggested next. Suggested dates are estimates, not deadlines.</p>
+    </div>
+    <a class="button button-quiet" href="{% url 'schedule' %}">Back to tasks</a>
+</section>
+
+
+{% if next_dates %}
+    <section class="next-dates" aria-labelledby="next-dates-title">
+        <h2 id="next-dates-title">Next suggested dates</h2>
+        <p class="next-dates-note">Estimates from each task's last completion and target interval, not deadlines.</p>
+        <ol class="next-date-list">
+            {% for next_date in next_dates %}
+                <li class="next-date-card">
+                    <h3><time datetime="{{ next_date.date|date:'Y-m-d' }}">{{ next_date.date|date:"D, M j" }}</time></h3>
+                    <ul>
+                        {% for entry in next_date.entries %}
+                            <li><a href="{% url 'task_detail' entry.task.pk %}">{{ entry.task.name }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            {% endfor %}
+        </ol>
+    </section>
+{% endif %}
+
+<div class="calendar-layout">
+    <details class="calendar-filters" data-calendar-filters open>
+        <summary>Filter tasks{% if filter_status %} · {{ filter_status }}{% endif %}</summary>
+        <div class="calendar-filters-body">
+                {% if filter_status %}<p class="filter-status">{{ filter_status }}</p>{% endif %}
+                <a class="button button-quiet filter-reset" href="{{ all_tasks_url }}">All tasks</a>
+                <nav class="filter-group" aria-label="Filter by category">
+                    <h3>Categories</h3>
+                    <ul>
+                        {% for link in category_links %}
+                            <li><a href="{{ link.url }}"{% if link.selected %} aria-current="true"{% endif %}>{{ link.label }}</a></li>
+                        {% empty %}
+                            <li class="filter-empty">No categories yet.</li>
+                        {% endfor %}
+                    </ul>
+                </nav>
+                <nav class="filter-group" aria-label="Filter by subcategory">
+                    <h3>Subcategories</h3>
+                    <ul>
+                        {% for link in subcategory_links %}
+                            <li><a href="{{ link.url }}"{% if link.selected %} aria-current="true"{% endif %}>{{ link.label }}</a></li>
+                        {% empty %}
+                            <li class="filter-empty">No subcategories yet.</li>
+                        {% endfor %}
+                    </ul>
+                </nav>
+                <section class="filter-group" aria-labelledby="task-filter-title">
+                    <h3 id="task-filter-title">Tasks</h3>
+                    <ul class="task-filter-list">
+                        {% for link in task_links %}
+                            <li><a href="{{ link.url }}"{% if link.selected %} aria-current="true"{% endif %}>{{ link.label }}</a></li>
+                        {% empty %}
+                            <li class="filter-empty">No active tasks yet.</li>
+                        {% endfor %}
+                    </ul>
+                </section>
+                <section class="undated-section" aria-labelledby="undated-title">
+                    <h3 id="undated-title">Undated tasks</h3>
+                    <ul class="undated-task-list">
+                        {% for task in undated_tasks %}
+                            <li><a href="{% url 'task_detail' task.pk %}">{{ task.name }}</a></li>
+                        {% empty %}
+                            <li class="filter-empty">Every task has a suggested date.</li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            </div>
+        </details>
+    <div class="calendar-main">
+        <nav class="month-navigation" aria-label="Calendar month navigation">
+            {% if previous_month_url %}
+                <a class="button button-quiet" href="{{ previous_month_url }}" aria-label="Previous month">Previous month</a>
+            {% else %}
+                <span class="month-navigation-placeholder">Previous month</span>
+            {% endif %}
+            <h2>{{ selected_month|date:"F Y" }}</h2>
+            {% if next_month_url %}
+                <a class="button button-quiet" href="{{ next_month_url }}" aria-label="Next month">Next month</a>
+            {% else %}
+                <span class="month-navigation-placeholder">Next month</span>
+            {% endif %}
+        </nav>
+
+        {% if not days %}
+            <p class="calendar-empty-note">{{ empty_note }}</p>
+            {% if jump_url %}
+                <p class="calendar-jump">
+                    <a class="button button-primary" href="{{ jump_url }}">Jump to {{ jump_month|date:"F Y" }}</a>
+                </p>
+            {% endif %}
+        {% endif %}
+
+        <div class="calendar-grid-wrap">
+            <table class="calendar-grid" aria-label="Completed and suggested dates for {{ selected_month|date:'F Y' }}">
+                <thead>
+                    <tr>
+                        {% for weekday in weekdays %}<th scope="col" aria-label="{{ weekday }}"><span class="weekday-long">{{ weekday }}</span><span class="weekday-short" aria-hidden="true">{{ weekday|slice:":3" }}</span></th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for week in weeks %}
+                        <tr>
+                            {% for day in week %}
+                                {% if day.in_month %}
+                                    <td class="calendar-day{% if day.is_today %} is-today{% endif %}" data-date="{{ day.date|date:'Y-m-d' }}">
+                                        <time class="calendar-date" datetime="{{ day.date|date:'Y-m-d' }}"{% if day.is_today %} aria-current="date"{% endif %}>{{ day.date|date:"j" }}</time>
+                                        {% if day.entries %}
+                                            <ul class="calendar-entries">
+                                                {% for entry in day.entries %}
+                                                    <li class="calendar-entry">
+                                                        <span class="calendar-entry-kind is-{{ entry.kind }}">{{ entry.kind_label }}</span>
+                                                        <a href="{% url 'task_detail' entry.task.pk %}">{{ entry.task.name }}</a>
+                                                        {% if entry.archived %}<span class="calendar-entry-archived">Archived task</span>{% endif %}
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                    </td>
+                                {% else %}
+                                    <td class="calendar-day is-outside-month" aria-hidden="true"></td>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if days %}
+            <section class="calendar-agenda" aria-labelledby="calendar-agenda-title">
+                <h2 id="calendar-agenda-title">{{ agenda_title }}</h2>
+                <ol class="calendar-agenda-list">
+                    {% for day in days %}
+                        <li>
+                            <h3><time datetime="{{ day.date|date:'Y-m-d' }}">{{ day.date|date:"D, M j" }}</time></h3>
+                            <ul>
+                                {% for entry in day.entries %}
+                                    <li>
+                                        <span class="calendar-entry-kind is-{{ entry.kind }}">{{ entry.kind_label }}</span>
+                                        <a href="{% url 'task_detail' entry.task.pk %}">{{ entry.task.name }}</a>
+                                        {% if entry.archived %}<span class="calendar-entry-archived">Archived task</span>{% endif %}
+                                        {% if entry.meta %}<span class="calendar-entry-meta">{{ entry.meta }}</span>{% endif %}
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                    {% endfor %}
+                </ol>
+            </section>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    (() => {
+        const filters = document.querySelector("[data-calendar-filters]");
+        if (filters && window.matchMedia("(max-width: 680px)").matches) {
+            filters.open = false;
+        }
+    })();
+</script>
+{% endblock %}

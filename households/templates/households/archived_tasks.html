@@ -1,0 +1,33 @@
+{% extends "households/base.html" %}
+{% block title %}Archived tasks · HomeCycle{% endblock %}
+{% block content %}
+<section class="page-heading" aria-labelledby="archive-title">
+    <div>
+        <p class="eyebrow">Your household</p>
+        <h1 id="archive-title">Archived tasks</h1>
+        <p class="intro">Archived tasks keep their completion history and can be restored.</p>
+    </div>
+    <a class="button button-quiet" href="{% url 'schedule' %}">Back to active tasks</a>
+</section>
+{% if tasks %}
+    <section class="task-list" aria-label="Archived tasks">
+        {% for task in tasks %}
+            <article class="task-card" aria-labelledby="archived-task-title-{{ task.pk }}">
+                <div class="task-card-copy">
+                    <p class="task-kind">{% if task.category %}{{ task.category.display_label }} · {% endif %}Archived task</p>
+                    <h2 id="archived-task-title-{{ task.pk }}">{{ task.name }}</h2>
+                </div>
+                <form method="post" action="{% url 'task_restore' task.pk %}">
+                    {% csrf_token %}
+                    <button class="button button-primary" type="submit">Restore task</button>
+                </form>
+            </article>
+        {% endfor %}
+    </section>
+{% else %}
+    <section class="empty-state">
+        <h2>No archived tasks</h2>
+        <p>Tasks you archive will appear here.</p>
+    </section>
+{% endif %}
+{% endblock %}

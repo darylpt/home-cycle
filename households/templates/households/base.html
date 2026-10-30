@@ -1,0 +1,58 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f1f4ee">
+    <link rel="manifest" href="{% static 'households/manifest.json' %}">
+    <link rel="icon" href="{% static 'households/icon.svg' %}" type="image/svg+xml">
+    <link rel="stylesheet" href="{% static 'households/app.css' %}">
+    <title>{% block title %}HomeCycle{% endblock %}</title>
+</head>
+<body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <header class="site-header">
+        <a class="brand" href="{% url 'schedule' %}" aria-label="HomeCycle home">
+            <span class="brand-mark" aria-hidden="true">H</span>
+            <span>HomeCycle</span>
+        </a>
+        {% if request.user.is_authenticated %}
+            {% with current=request.resolver_match.url_name %}
+                <nav class="primary-nav" aria-label="Primary">
+                    <a href="{% url 'schedule' %}"{% if current == 'schedule' or current == 'task_detail' or current == 'task_create' or current == 'task_edit' or current == 'archived_tasks' or current == 'completion_create' or current == 'completion_edit' %} aria-current="page"{% endif %}>Tasks</a>
+                    <a href="{% url 'calendar' %}"{% if current == 'calendar' %} aria-current="page"{% endif %}>Calendar</a>
+                    <a href="{% url 'household_members' %}" aria-label="Household members"{% if current == 'household_members' %} aria-current="page"{% endif %}>Members</a>
+                </nav>
+                <div class="account-menu">
+                    <a class="button button-primary nav-add-task" href="{% url 'task_create' %}">+ Add task</a>
+                    <span class="account-name">{{ request.user.username }}</span>
+                    <form action="{% url 'logout' %}" method="post">
+                        {% csrf_token %}
+                        <button class="button button-quiet" type="submit">Sign out</button>
+                    </form>
+                </div>
+            {% endwith %}
+        {% endif %}
+    </header>
+    <main id="main-content" class="{% block main_class %}page-shell{% endblock %}" tabindex="-1">
+        {% if messages %}
+            <div class="messages" aria-live="polite">
+                {% for message in messages %}<p class="message">{{ message }}</p>{% endfor %}
+            </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </main>
+    <script>
+        if ("serviceWorker" in navigator) {
+            window.addEventListener("load", () => navigator.serviceWorker.register("{% static 'households/service-worker.js' %}"));
+        }
+        document.addEventListener("submit", (event) => {
+            const form = event.target.closest("form[data-confirm]");
+            if (form && !window.confirm(form.dataset.confirm)) {
+                event.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>

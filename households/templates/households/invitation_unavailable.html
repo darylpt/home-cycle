@@ -1,0 +1,13 @@
+{% extends "households/base.html" %}
+{% block title %}Invitation unavailable · HomeCycle{% endblock %}
+{% block content %}
+<section class="empty-state" aria-labelledby="invitation-unavailable-title">
+    <h1 id="invitation-unavailable-title">Invitation unavailable</h1>
+    <p>This link has expired, was revoked, or has already been used.</p>
+    {% if request.user.is_authenticated %}
+        <a class="button button-primary" href="{% url 'schedule' %}">Back to tasks</a>
+    {% else %}
+        <a class="button button-primary" href="{% url 'login' %}">Sign in</a>
+    {% endif %}
+</section>
+{% endblock %}

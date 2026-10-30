@@ -1,0 +1,67 @@
+{% extends "households/base.html" %}
+{% block title %}Household members · HomeCycle{% endblock %}
+{% block content %}
+<section class="page-heading" aria-labelledby="members-title">
+    <div>
+        <p class="eyebrow">Your household</p>
+        <h1 id="members-title">Household members</h1>
+        <p class="intro">Everyone shares the same tasks and completion history.</p>
+    </div>
+    <a class="button button-quiet" href="{% url 'schedule' %}">Back to tasks</a>
+</section>
+
+{% if invitation_url %}
+    <section class="invite-link" aria-label="New private invitation link" role="status">
+        <h2>Share this private link</h2>
+        <p>It can be used once and expires in seven days. Anyone with the link can join.</p>
+        <a href="{{ invitation_url }}">{{ invitation_url }}</a>
+    </section>
+{% endif %}
+
+<section class="member-section" aria-labelledby="member-list-title">
+    <div class="section-heading">
+        <h2 id="member-list-title">Members</h2>
+        <form method="post" action="{% url 'invitation_create' %}">
+            {% csrf_token %}
+            <button class="button button-primary" type="submit">Create invitation link</button>
+        </form>
+    </div>
+    <ul class="member-list">
+        {% for member in members %}
+            <li>
+                <span>{{ member.user.username }}{% if member.user_id == request.user.pk %} (you){% endif %}</span>
+                {% if member.user_id != request.user.pk %}
+                    <form method="post" action="{% url 'member_remove' member.pk %}" data-confirm="Remove {{ member.user.username }} from this household? Their past completion records will stay in the history.">
+                        {% csrf_token %}
+                        <button class="button button-quiet" type="submit">Remove {{ member.user.username }}</button>
+                    </form>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+</section>
+
+<section class="member-section" aria-labelledby="invitation-list-title">
+    <h2 id="invitation-list-title">Invitation links</h2>
+    {% if invitations %}
+        <ul class="invitation-list">
+            {% for invitation in invitations %}
+                <li>
+                    <div>
+                        <strong>{{ invitation.status }}</strong>
+                        <span>Expires <time datetime="{{ invitation.expires_at|date:'c' }}">{{ invitation.expires_at|date:"M j, Y" }}</time></span>
+                    </div>
+                    {% if invitation.can_revoke %}
+                        <form method="post" action="{% url 'invitation_revoke' invitation.pk %}" data-confirm="Revoke this invitation? Anyone with the link will no longer be able to join.">
+                            {% csrf_token %}
+                            <button class="button button-quiet" type="submit">Revoke invitation</button>
+                        </form>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="muted-copy">No invitation links yet.</p>
+    {% endif %}
+</section>
+{% endblock %}

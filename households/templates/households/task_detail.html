@@ -1,0 +1,68 @@
+{% extends "households/base.html" %}
+{% block title %}{{ task.name }} · HomeCycle{% endblock %}
+{% block content %}
+<section class="page-heading" aria-labelledby="task-title">
+    <div>
+        <p class="eyebrow">{% if task.archived_at %}Archived task{% else %}Shared care task{% endif %}</p>
+        <h1 id="task-title">{{ task.name }}</h1>
+    </div>
+    <div class="task-actions">
+        {% if not task.archived_at %}<a class="button button-primary" href="{% url 'completion_create' task.pk %}">Log completion</a>{% endif %}
+        {% if not task.archived_at %}<a class="button button-quiet" href="{% url 'task_edit' task.pk %}">Edit task</a>{% endif %}
+        <a class="button button-quiet" href="{% if task.archived_at %}{% url 'archived_tasks' %}{% else %}{% url 'schedule' %}{% endif %}">Back to tasks</a>
+    </div>
+</section>
+
+<section class="task-summary" aria-label="Task summary">
+    {% if task.category %}<p class="task-kind">{{ task.category.display_label }}</p>{% endif %}
+    {% if task.last_completed_on %}
+        <p class="task-status">
+            {% if task.days_since_last_completed == 0 %}Done today
+            {% elif task.days_since_last_completed == 1 %}Done 1 day ago
+            {% else %}Done {{ task.days_since_last_completed }} days ago
+            {% endif %}
+        </p>
+        <p class="task-date">Last done <time datetime="{{ task.last_completed_on|date:'Y-m-d' }}">{{ task.last_completed_on|date:"M j, Y" }}</time></p>
+    {% else %}
+        <p class="task-status">Not logged yet</p>
+    {% endif %}
+    {% if task.target_interval_days %}<p>Target: every {{ task.target_interval_days }} day{{ task.target_interval_days|pluralize }}</p>{% else %}<p>No target interval</p>{% endif %}
+    {% if task.observed_median_days != None %}
+        <p class="task-cadence">Usually done every {{ task.observed_median_days|floatformat:"-1" }} days</p>
+        <p class="task-cadence-note">Based on {{ task.completion_date_count }} recorded completions</p>
+    {% else %}
+        <p class="task-cadence">Not enough history ({{ task.completion_date_count }} date{{ task.completion_date_count|pluralize }})</p>
+    {% endif %}
+    {% if task.suggested_date %}<p>Suggested next date: <time datetime="{{ task.suggested_date|date:'Y-m-d' }}">{{ task.suggested_date|date:"M j, Y" }}</time> (estimate, not a deadline)</p>{% endif %}
+</section>
+
+<section class="history-section" aria-labelledby="history-title">
+    <h2 id="history-title">Completion history</h2>
+    {% if completions %}
+        <div class="history-list">
+            {% for completion in completions %}
+                <article class="history-card" aria-label="Completion {{ completion.completed_on|date:'Y-m-d' }}">
+                    <div class="history-card-main">
+                        <h3 id="completion-title-{{ completion.pk }}">Completion <time datetime="{{ completion.completed_on|date:'Y-m-d' }}">{{ completion.completed_on|date:"M j, Y" }}</time></h3>
+                        <p>Completed by {{ completion.attributed_to.username|default:"Unattributed" }}</p>
+                    </div>
+                    <div class="task-actions">
+                        <a class="button button-quiet" href="{% url 'completion_edit' task.pk completion.pk %}">Correct completion</a>
+                        {% if completion.latest_undoable_revision %}
+                            <form method="post" action="{% url 'completion_undo' task.pk completion.pk completion.latest_undoable_revision.pk %}">
+                                {% csrf_token %}
+                                <button class="button button-quiet" type="submit">Undo correction</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state history-empty">
+            <h3>No completions yet</h3>
+            <p>Record the first date to start this task's history.</p>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
