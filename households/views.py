@@ -101,7 +101,7 @@ def household_members(request):
 def invitation_create(request):
     household = household_for_user(request.user)
     token = secrets.token_urlsafe(32)
-    invitation = Invitation.objects.create(
+    Invitation.objects.create(
         household=household,
         created_by=request.user,
         token_digest=hashlib.sha256(token.encode()).hexdigest(),

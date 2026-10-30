@@ -8,9 +8,9 @@ HomeCycle is a shared-household progressive web app for seeing how long it has b
 - Set a recurring task with an optional positive whole-day target interval; see elapsed time since the last completion.
 - Classify a task with an optional household category and subcategory by typing a label or reusing one. Existing and unclassified tasks keep working.
 - Record one date-only completion per task per calendar day, with optional member attribution.
-- Review logged completions and suggested dates together on the calendar at `/calendar/`. Each date is labeled Completed or Suggested; suggested dates are estimates, not deadlines. The desktop view uses a month grid and activity agenda; mobile uses the agenda. Archived-task completions remain visible and labeled. Filter by task, category, or subcategory, find tasks without a suggested date in the undated list.
-- Correct or undo completion changes; summaries use the current valid completion dates.
-- Show the last-completed date and elapsed time, the typical gap (median) after at least three dates, and an optional target-based suggested date. Suggested dates are calculated, not stored.
+- Review logged completions and suggested dates together on the calendar at `/calendar/`. Each date is labeled Completed or Suggested; suggested dates are estimates, not deadlines. The desktop view uses a month grid and activity agenda; mobile uses the agenda. Archived-task completions remain visible and labeled, including when filtering by task, category, or subcategory. Find active tasks without a suggested date in the filtered undated list.
+- Correct completions or undo the most recent correction first; summaries use the current valid completion dates.
+- Show the last-completed date and elapsed time, the typical gap (median) after at least three dates, and an optional target-based suggested date. The suggestion adds the target interval to the last completion date; it is unavailable without either value or when the result exceeds December 31, 9999. Suggested dates are calculated, not stored; archived tasks have no suggestions on the calendar.
 - Archive and restore tasks without losing their history.
 - Invite members with private, single-use links that expire after seven days and can be revoked.
 
