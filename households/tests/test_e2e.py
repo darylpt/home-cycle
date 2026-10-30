@@ -545,94 +545,6 @@ async def household_calendar_shows_logged_completions(base_url):
         finally:
             await browser.close()
 
-async def calendar_shows_next_dates_and_jumps_to_their_month(base_url):
-    today = timezone.localdate()
-
-    async with async_playwright() as playwright:
-        browser = await playwright.chromium.launch(headless=True)
-        try:
-            page = await browser.new_page()
-            page.set_default_timeout(5000)
-            await page.goto(f"{base_url}/signup/")
-            await page.get_by_label("Username").fill("next-date-caregiver")
-            await page.get_by_label("Password", exact=True).fill("Sensible-care-pass-42!")
-            await page.get_by_label("Confirm password").fill("Sensible-care-pass-42!")
-            await page.get_by_role("button", name="Create account").click()
-
-            task_count = 0
-
-            async def create_task(name, interval):
-                nonlocal task_count
-                add_link = "Add your first task" if task_count == 0 else "Add a task"
-                await page.get_by_role("link", name=add_link).click()
-                await page.get_by_label("Task name").fill(name)
-                await page.get_by_label("Target interval in days").fill(str(interval))
-                await page.get_by_role("button", name="Save task").click()
-                task_count += 1
-
-            async def log_today(name):
-                task = page.get_by_role("article", name=name)
-                await task.get_by_role("link", name="Log done").click()
-                await page.get_by_label("Completion date").fill(today.isoformat())
-                await page.get_by_role("button", name="Save completion").click()
-                await page.get_by_role("link", name="Back to tasks").click()
-
-            intervals = (10, 20, 90, 150)
-            for interval in intervals:
-                await create_task(f"{interval} day task", interval)
-                await log_today(f"{interval} day task")
-
-            await page.get_by_role("link", name="Calendar").click()
-            await expect(page.get_by_role("heading", name="Calendar")).to_be_visible()
-            await expect(page.get_by_role("link", name="+ Add task")).to_be_visible()
-            await expect(page.locator(".calendar-modes")).to_have_count(0)
-            calendar_grid = page.locator(".calendar-grid")
-            today_cell = calendar_grid.locator(f'td[data-date="{today.isoformat()}"]')
-            await expect(today_cell.get_by_text("Completed", exact=True)).to_have_count(4)
-
-            panel = page.get_by_role("region", name="Next suggested dates")
-            await expect(panel).to_be_visible()
-            suggested_dates = [today + timedelta(days=interval) for interval in intervals]
-            for suggested_date in suggested_dates[:3]:
-                await expect(panel).to_contain_text(suggested_date.strftime("%b %-d"))
-            for interval in intervals[:3]:
-                await expect(
-                    panel.get_by_role("link", name=f"{interval} day task")
-                ).to_be_visible()
-            await expect(panel.get_by_role("link", name="150 day task")).to_have_count(0)
-
-            target_month = suggested_dates[2].replace(day=1)
-            empty_month = (target_month - timedelta(days=1)).replace(day=1)
-            for _ in range(6):
-                if await page.get_by_role(
-                    "heading", name=empty_month.strftime("%B %Y")
-                ).count():
-                    break
-                await page.get_by_role("link", name="Next month").click()
-            await expect(
-                page.get_by_role("heading", name=empty_month.strftime("%B %Y"))
-            ).to_be_visible()
-            await expect(page.get_by_text("No completions or suggested dates in")).to_be_visible()
-            jump = page.get_by_role(
-                "link", name=f"Jump to {target_month.strftime('%B %Y')}"
-            )
-            await expect(jump).to_be_visible()
-            await jump.click()
-            await expect(
-                page.get_by_role("heading", name=target_month.strftime("%B %Y"))
-            ).to_be_visible()
-            await expect(
-                page.locator(".calendar-grid").get_by_role(
-                    "link", name="90 day task"
-                )
-            ).to_have_count(1)
-            await expect(
-                page.locator(".calendar-grid").get_by_text("Suggested", exact=True)
-            ).to_be_visible()
-        finally:
-            await browser.close()
-
-
 async def global_calendar_filters_classified_tasks_and_keeps_undated_tasks(base_url):
     today = timezone.localdate()
     suggested_date = today + timedelta(days=1)
@@ -687,8 +599,6 @@ async def global_calendar_filters_classified_tasks_and_keeps_undated_tasks(base_
             await expect(
                 page.get_by_role("heading", name=today.strftime("%B %Y"))
             ).to_be_visible()
-            next_dates = page.get_by_role("region", name="Next suggested dates")
-            await expect(next_dates.get_by_role("link", name="Maki bath")).to_be_visible()
             await expect(page.locator(".task-filter-list")).to_be_visible()
             undated = page.locator(".undated-task-list")
             await expect(undated.get_by_role("link", name="Maki vet")).to_be_visible()
@@ -779,11 +689,6 @@ class HomeCycleBrowserTests(StaticLiveServerTestCase):
         async_to_sync(household_invitations_sharing_and_removal)(self.live_server_url)
     def test_calendar_shows_logged_completions_and_month_navigation(self):
         async_to_sync(household_calendar_shows_logged_completions)(self.live_server_url)
-
-    def test_calendar_shows_next_dates_and_month_jump(self):
-        async_to_sync(calendar_shows_next_dates_and_jumps_to_their_month)(
-            self.live_server_url
-        )
 
     def test_global_calendar_filters_classified_tasks_and_keeps_undated_tasks(self):
         async_to_sync(

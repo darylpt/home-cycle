@@ -201,30 +201,7 @@ h3 { letter-spacing: -0.02em; }
 .month-navigation h2 { margin: 0; font-size: 1.4rem; text-align: center; }
 .month-navigation > :last-child { justify-self: end; }
 .month-navigation-placeholder { color: var(--ink-muted); font-size: 0.88rem; }
-.next-dates {
-    margin-bottom: 1.25rem;
-    padding: 1.1rem 1.2rem;
-    border: 1px solid var(--line);
-    border-left: 4px solid var(--green);
-    border-radius: 0.35rem 0.9rem 0.9rem 0.35rem;
-    background: var(--paper);
-}
-.next-dates h2 { margin-bottom: 0.2rem; font-size: 1.15rem; }
-.next-dates-note { margin-bottom: 0.8rem; color: var(--ink-muted); font-size: 0.84rem; }
-.next-date-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
-    gap: 0.6rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-.next-date-card { padding: 0.7rem 0.8rem; border: 1px solid var(--line); border-radius: 0.6rem; background: #f5f7f2; }
-.next-date-card h3 { margin-bottom: 0.35rem; font-size: 0.92rem; }
-.next-date-card ul { display: grid; gap: 0.25rem; margin: 0; padding: 0; list-style: none; }
-.next-date-card a { font-size: 0.9rem; overflow-wrap: anywhere; }
 .calendar-empty-note { margin: 0 0 0.8rem; color: var(--ink-muted); }
-.calendar-jump { margin: 0 0 1rem; }
 .calendar-grid-wrap {
     overflow-x: auto;
     border: 1px solid var(--line);

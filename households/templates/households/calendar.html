@@ -12,25 +12,6 @@
 </section>
 
 
-{% if next_dates %}
-    <section class="next-dates" aria-labelledby="next-dates-title">
-        <h2 id="next-dates-title">Next suggested dates</h2>
-        <p class="next-dates-note">Estimates from each task's last completion and target interval, not deadlines.</p>
-        <ol class="next-date-list">
-            {% for next_date in next_dates %}
-                <li class="next-date-card">
-                    <h3><time datetime="{{ next_date.date|date:'Y-m-d' }}">{{ next_date.date|date:"D, M j" }}</time></h3>
-                    <ul>
-                        {% for entry in next_date.entries %}
-                            <li><a href="{% url 'task_detail' entry.task.pk %}">{{ entry.task.name }}</a></li>
-                        {% endfor %}
-                    </ul>
-                </li>
-            {% endfor %}
-        </ol>
-    </section>
-{% endif %}
-
 <div class="calendar-layout">
     <details class="calendar-filters" data-calendar-filters open>
         <summary>Filter tasks{% if filter_status %} · {{ filter_status }}{% endif %}</summary>
@@ -63,7 +44,7 @@
                         {% for link in task_links %}
                             <li><a href="{{ link.url }}"{% if link.selected %} aria-current="true"{% endif %}>{{ link.label }}</a></li>
                         {% empty %}
-                            <li class="filter-empty">No active tasks yet.</li>
+                            <li class="filter-empty">No tasks yet.</li>
                         {% endfor %}
                     </ul>
                 </section>
@@ -96,11 +77,6 @@
 
         {% if not days %}
             <p class="calendar-empty-note">{{ empty_note }}</p>
-            {% if jump_url %}
-                <p class="calendar-jump">
-                    <a class="button button-primary" href="{{ jump_url }}">Jump to {{ jump_month|date:"F Y" }}</a>
-                </p>
-            {% endif %}
         {% endif %}
 
         <div class="calendar-grid-wrap">

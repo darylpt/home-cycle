@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -46,7 +47,9 @@ def add_task_summary(task, completion_dates):
     )
     task.suggested_date = (
         task.last_completed_on + timedelta(days=task.target_interval_days)
-        if task.last_completed_on and task.target_interval_days
+        if task.last_completed_on
+        and task.target_interval_days
+        and task.target_interval_days <= (date.max - task.last_completed_on).days
         else None
     )
     return task
@@ -334,26 +337,6 @@ def filter_pk(value):
     except (TypeError, ValueError):
         return None
     return pk if pk > 0 else None
-def next_suggested_dates(tasks, today, limit=3):
-    grouped = defaultdict(list)
-    for task in tasks:
-        if task.suggested_date is not None and task.suggested_date >= today:
-            grouped[task.suggested_date].append(task)
-    return [
-        {
-            "date": suggested_date,
-            "entries": [
-                {"task": task, "meta": ""}
-                for task in sorted(
-                    grouped[suggested_date],
-                    key=lambda task: (task.name.casefold(), task.pk),
-                )
-            ],
-        }
-        for suggested_date in sorted(grouped)[:limit]
-    ]
-
-
 
 
 def calendar_context(request, household, selected_month, today):
@@ -364,7 +347,6 @@ def calendar_context(request, household, selected_month, today):
     tasks = list(
         Task.objects.filter(
             household=household,
-            archived_at__isnull=True,
         )
         .select_related("category__parent")
         .prefetch_related("completions")
@@ -430,6 +412,8 @@ def calendar_context(request, household, selected_month, today):
     entries_by_date = defaultdict(list)
     undated_tasks = []
     for task in filtered_tasks:
+        if task.archived_at is not None:
+            continue
         if task.suggested_date is None:
             undated_tasks.append(task)
         elif selected_month <= task.suggested_date <= last_day:
@@ -521,14 +505,6 @@ def calendar_context(request, household, selected_month, today):
         )
     ]
 
-    next_dates = next_suggested_dates(filtered_tasks, today)
-    jump_month = None
-    jump_url = None
-    future_dates = [entry["date"] for entry in next_dates if entry["date"] > last_day]
-    if not days and future_dates:
-        jump_month = future_dates[0].replace(day=1)
-        jump_url = calendar_query(jump_month, **active_filters)
-
     previous_month = shift_month(selected_month, -1)
     next_month = shift_month(selected_month, 1)
     return {
@@ -545,10 +521,7 @@ def calendar_context(request, household, selected_month, today):
         "weeks": weeks,
         "days": days,
         "empty_note": f"No completions or suggested dates in {selected_month.strftime('%B %Y')}.",
-        "jump_month": jump_month,
-        "jump_url": jump_url,
         "agenda_title": "Activity",
-        "next_dates": next_dates,
         "undated_tasks": undated_tasks,
         "category_links": category_links,
         "subcategory_links": subcategory_links,
@@ -722,29 +695,33 @@ def completion_create(request, task_id):
 def completion_edit(request, task_id, completion_id):
     household = household_for_user(request.user)
     task = get_object_or_404(Task, pk=task_id, household=household)
-    completion = get_object_or_404(
-        Completion.objects.select_related("attributed_to"),
-        pk=completion_id,
-        task=task,
-    )
-    previous_completed_on = completion.completed_on
-    previous_attributed_to = completion.attributed_to
-    previous_attributed_to_id = completion.attributed_to_id
-    form = CompletionForm(
-        request.POST or None,
-        instance=completion,
-        task=task,
-        household=household,
-        current_user=request.user,
-    )
-    if request.method == "POST" and form.is_valid():
-        corrected = form.save(commit=False)
-        changes = (
-            previous_completed_on != corrected.completed_on
-            or previous_attributed_to_id != corrected.attributed_to_id
+    with transaction.atomic():
+        if request.method == "POST":
+            Completion.objects.filter(pk=completion_id, task=task).update(
+                updated_at=F("updated_at")
+            )
+        completion = get_object_or_404(
+            Completion.objects.select_related("attributed_to"),
+            pk=completion_id,
+            task=task,
         )
-        if changes:
-            with transaction.atomic():
+        previous_completed_on = completion.completed_on
+        previous_attributed_to = completion.attributed_to
+        previous_attributed_to_id = completion.attributed_to_id
+        form = CompletionForm(
+            request.POST or None,
+            instance=completion,
+            task=task,
+            household=household,
+            current_user=request.user,
+        )
+        if request.method == "POST" and form.is_valid():
+            corrected = form.save(commit=False)
+            changes = (
+                previous_completed_on != corrected.completed_on
+                or previous_attributed_to_id != corrected.attributed_to_id
+            )
+            if changes:
                 CompletionRevision.objects.create(
                     completion=completion,
                     previous_completed_on=previous_completed_on,
@@ -754,18 +731,18 @@ def completion_edit(request, task_id, completion_id):
                     changed_by=request.user,
                 )
                 corrected.save()
-        messages.success(request, "Completion corrected.")
-        return redirect("task_detail", task_id=task.pk)
-    return render(
-        request,
-        "households/completion_form.html",
-        {
-            "form": form,
-            "task": task,
-            "page_title": "Correct completion",
-            "submit_label": "Save correction",
-        },
-    )
+            messages.success(request, "Completion corrected.")
+            return redirect("task_detail", task_id=task.pk)
+        return render(
+            request,
+            "households/completion_form.html",
+            {
+                "form": form,
+                "task": task,
+                "page_title": "Correct completion",
+                "submit_label": "Save correction",
+            },
+        )
 
 
 @login_required
@@ -773,29 +750,32 @@ def completion_edit(request, task_id, completion_id):
 def completion_undo(request, task_id, completion_id, revision_id):
     household = household_for_user(request.user)
     task = get_object_or_404(Task, pk=task_id, household=household)
-    completion = get_object_or_404(Completion, pk=completion_id, task=task)
-    revision = get_object_or_404(
-        CompletionRevision,
-        pk=revision_id,
-        completion=completion,
-        undone_at__isnull=True,
-    )
-    latest_revision = completion.revisions.filter(undone_at__isnull=True).first()
-    if latest_revision != revision:
-        messages.error(request, "Undo the most recent correction first.")
-        return redirect("task_detail", task_id=task.pk)
-    if Completion.objects.filter(
-        task=task,
-        completed_on=revision.previous_completed_on,
-    ).exclude(pk=completion.pk).exists():
-        messages.error(request, "That date already has a completion and cannot be restored.")
-        return redirect("task_detail", task_id=task.pk)
-
     with transaction.atomic():
+        Completion.objects.filter(pk=completion_id, task=task).update(
+            updated_at=F("updated_at")
+        )
+        completion = get_object_or_404(Completion, pk=completion_id, task=task)
+        revision = get_object_or_404(
+            CompletionRevision,
+            pk=revision_id,
+            completion=completion,
+            undone_at__isnull=True,
+        )
+        latest_revision = completion.revisions.filter(undone_at__isnull=True).first()
+        if latest_revision != revision:
+            messages.error(request, "Undo the most recent correction first.")
+            return redirect("task_detail", task_id=task.pk)
+        if Completion.objects.filter(
+            task=task,
+            completed_on=revision.previous_completed_on,
+        ).exclude(pk=completion.pk).exists():
+            messages.error(request, "That date already has a completion and cannot be restored.")
+            return redirect("task_detail", task_id=task.pk)
+
         completion.completed_on = revision.previous_completed_on
         completion.attributed_to = revision.previous_attributed_to
         completion.save(update_fields=("completed_on", "attributed_to", "updated_at"))
         revision.undone_at = timezone.now()
         revision.save(update_fields=("undone_at",))
-    messages.success(request, "Correction undone.")
-    return redirect("task_detail", task_id=task.pk)
+        messages.success(request, "Correction undone.")
+        return redirect("task_detail", task_id=task.pk)
