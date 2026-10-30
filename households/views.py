@@ -9,7 +9,7 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -680,9 +680,18 @@ def completion_create(request, task_id):
     if request.method == "POST" and form.is_valid():
         completion = form.save(commit=False)
         completion.task = task
-        completion.save()
-        messages.success(request, "Completion recorded.")
-        return redirect("task_detail", task_id=task.pk)
+        try:
+            with transaction.atomic():
+                completion.save()
+        except IntegrityError:
+            if not Completion.objects.filter(
+                task=task, completed_on=completion.completed_on
+            ).exists():
+                raise
+            form.add_error("completed_on", "A completion already exists on this date.")
+        else:
+            messages.success(request, "Completion recorded.")
+            return redirect("task_detail", task_id=task.pk)
     return render(
         request,
         "households/completion_form.html",

@@ -82,7 +82,11 @@ class TaskForm(forms.ModelForm):
                 self.cleaned_data["category_label"],
                 self.cleaned_data["subcategory_label"],
             )
-            task.save()
+            task.save(
+                update_fields=("name", "target_interval_days", "category")
+                if not task._state.adding
+                else None
+            )
             self.save_m2m()
         return task
 

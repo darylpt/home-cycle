@@ -10,7 +10,7 @@ from django.test import RequestFactory, TransactionTestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from households.forms import CompletionForm
+from households.forms import CompletionForm, TaskForm
 from households.models import Completion, Household, Membership, Task, TaskCategory
 from households.views import add_task_summary, completion_edit
 
@@ -105,3 +105,43 @@ class ReviewFixTests(TransactionTestCase):
             self.assertEqual(response.status_code, 302)
             self.completion.refresh_from_db()
             self.assertEqual(self.completion.completed_on, expected)
+
+    def test_creation_conflict_after_validation_returns_feedback(self):
+        day = self.today - timedelta(days=1)
+        original = CompletionForm.is_valid
+
+        def validate(form):
+            valid = original(form)
+            Completion.objects.create(task=self.task, completed_on=day)
+            return valid
+
+        with patch.object(CompletionForm, "is_valid", validate):
+            response = self.client.post(
+                reverse("completion_create", args=[self.task.pk]),
+                {"completed_on": day.isoformat(), "attributed_to": ""},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["form"].errors["completed_on"],
+                         ["A completion already exists on this date."])
+        self.assertEqual(self.task.completions.filter(completed_on=day).count(), 1)
+
+    def test_task_edit_preserves_concurrent_archive_and_creation(self):
+        form = TaskForm(
+            {"name": "Updated", "target_interval_days": 14,
+             "category_label": "Home", "subcategory_label": "Care"},
+            instance=self.task, household=self.household,
+        )
+        self.assertTrue(form.is_valid())
+        archived_at = timezone.now()
+        Task.objects.filter(pk=self.task.pk).update(archived_at=archived_at)
+        form.save()
+        self.task.refresh_from_db()
+        self.assertEqual(self.task.archived_at, archived_at)
+        self.assertEqual(self.task.name, "Updated")
+        self.assertEqual(self.task.target_interval_days, 14)
+        self.assertEqual(self.task.category.display_label, "Home / Care")
+        create = TaskForm({"name": "New", "target_interval_days": "",
+                           "category_label": "", "subcategory_label": ""},
+                          household=self.household)
+        self.assertTrue(create.is_valid())
+        self.assertIsNotNone(create.save().pk)
