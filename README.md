@@ -1,18 +1,41 @@
 # HomeCycle
 
-A progressive web app for tracking recurring household care routines and schedules.
+HomeCycle is a shared-household progressive web app for seeing how long it has been since a care task was last done, and who optionally logged it.
 
-## Agreed scope
+## MVP behavior
 
-- Track dated completion events for each task. Keep the history so the app can answer questions such as “When did Maki last have a bath?”
-- For each task, support an optional target interval (for example, every 7 days) and summarize observed frequency from its completion history.
-- Keep one household schedule usable by multiple household members. Recording which member logged a completion is optional.
-- Start with tasks and history entered manually. Reading calendar photos is out of scope for the initial workflow.
+- Create one household with individual accounts and equal member permissions.
+- Set a recurring task with an optional positive whole-day target interval; see elapsed time since the last completion.
+- Classify a task with an optional household category and subcategory by typing a label or reusing one. Existing and unclassified tasks keep working.
+- Record one date-only completion per task per calendar day, with optional member attribution.
+- Review logged completions and suggested dates together on the calendar at `/calendar/`. Each date is labeled Completed or Suggested; suggested dates are estimates, not deadlines. The desktop view uses a month grid and activity agenda; mobile uses the agenda. Archived-task completions remain visible and labeled, including when filtering by task, category, or subcategory. Find active tasks without a suggested date in the filtered undated list.
+- Correct completions or undo the most recent correction first; summaries use the current valid completion dates.
+- Show the last-completed date and elapsed time, the typical gap (median) after at least three dates, and an optional target-based suggested date. The suggestion adds the target interval to the last completion date; it is unavailable without either value or when the result exceeds December 31, 9999. Suggested dates are calculated, not stored; archived tasks have no suggestions on the calendar.
+- Archive and restore tasks without losing their history.
+- Invite members with private, single-use links that expire after seven days and can be revoked.
 
-## Example from the source calendar
+Reminders, attachments, time-of-day, offline editing, and multiple households per account are outside the MVP.
 
-The October 2026 calendar image has a handwritten “Maki Bath” entry on October 7, 2026. This is an example entry, not yet app data.
+## Run locally
 
-## Not decided yet
+Requires Python 3.12 or newer.
 
-Implementation choices such as data storage, synchronization across devices, reminders, and the frequency-summary calculation are not specified by the agreed scope.
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python manage.py migrate
+.venv/bin/python manage.py runserver
+```
+
+Open `http://127.0.0.1:8000/` and create the first account. The app uses SQLite by default and stores its database in the repository root.
+
+## Browser tests
+
+The end-to-end suite uses Chromium through Playwright:
+
+```sh
+.venv/bin/playwright install chromium
+.venv/bin/python manage.py test households.tests.test_e2e
+```
+
+The suite exercises the user-facing PWA with isolated test data, including two-account invitation and shared-history flows.

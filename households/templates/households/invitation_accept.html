@@ -1,0 +1,29 @@
+{% extends "households/base.html" %}
+{% block title %}Join household · HomeCycle{% endblock %}
+{% block content %}
+<section class="form-card" aria-labelledby="invitation-title">
+    <p class="eyebrow">HomeCycle invitation</p>
+    <h1 id="invitation-title">Join this household</h1>
+    <p class="intro">Use your own account to share the household schedule and history.</p>
+    {% if form %}
+        <form method="post" class="form-stack">
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+            {% for field in form %}
+                <div class="field">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<div class="field-help">{{ field.help_text }}</div>{% endif %}
+                    {% if field.errors %}<div class="form-errors" role="alert">{{ field.errors }}</div>{% endif %}
+                </div>
+            {% endfor %}
+            <button class="button button-primary button-wide" type="submit">Create account and join</button>
+        </form>
+    {% else %}
+        <form method="post" class="form-stack">
+            {% csrf_token %}
+            <button class="button button-primary button-wide" type="submit">Join household</button>
+        </form>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "households/base.html" %}
+{% block title %}Create account · HomeCycle{% endblock %}
+{% block content %}
+<section class="auth-card" aria-labelledby="signup-title">
+    <p class="eyebrow">A calmer way to keep up</p>
+    <h1 id="signup-title">Create your HomeCycle account</h1>
+    <p class="intro">Share when household tasks were last done and who logged them.</p>
+    <form method="post" class="form-stack">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}
+            <div class="field">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<div class="field-help">{{ field.help_text|safe }}</div>{% endif %}
+                {% if field.errors %}<div class="form-errors" role="alert">{{ field.errors }}</div>{% endif %}
+            </div>
+        {% endfor %}
+        <button class="button button-primary button-wide" type="submit">Create account</button>
+    </form>
+    <p class="auth-switch">Already have an account? <a href="{% url 'login' %}">Sign in</a></p>
+</section>
+{% endblock %}

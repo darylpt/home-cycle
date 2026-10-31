@@ -1,0 +1,61 @@
+{% extends "households/base.html" %}
+{% block title %}Tasks · HomeCycle{% endblock %}
+{% block content %}
+<section class="page-heading" aria-labelledby="home-title">
+    <div>
+        <p class="eyebrow">Your household</p>
+        <h1 id="home-title">Tasks</h1>
+        <p class="intro">See how long it has been since each task was last done.</p>
+    </div>
+    <a class="button button-primary" href="{% url 'task_create' %}">{% if tasks %}Add a task{% else %}Add your first task{% endif %}</a>
+</section>
+
+{% if tasks %}
+    <section class="task-list" aria-label="Active tasks">
+        {% for task in tasks %}
+            <article class="task-card" aria-labelledby="task-title-{{ task.pk }}">
+                <div class="task-card-copy">
+                    <p class="task-kind">{% if task.category %}{{ task.category.display_label }}{% else %}Shared care task{% endif %}</p>
+                    <h2 id="task-title-{{ task.pk }}">{{ task.name }}</h2>
+                    {% if task.last_completed_on %}
+                        <p class="task-status">
+                            {% if task.days_since_last_completed == 0 %}Done today
+                            {% elif task.days_since_last_completed == 1 %}Done 1 day ago
+                            {% else %}Done {{ task.days_since_last_completed }} days ago
+                            {% endif %}
+                        </p>
+                        <p class="task-date">Last done <time datetime="{{ task.last_completed_on|date:'Y-m-d' }}">{{ task.last_completed_on|date:"M j, Y" }}</time></p>
+                    {% else %}
+                        <p class="task-status">Not logged yet</p>
+                    {% endif %}
+                    {% if task.target_interval_days %}<p class="task-interval">Target: every {{ task.target_interval_days }} day{{ task.target_interval_days|pluralize }}</p>{% else %}<p class="task-interval">No target interval</p>{% endif %}
+                    {% if task.observed_median_days != None %}
+                        <p class="task-cadence">Usually done every {{ task.observed_median_days|floatformat:"-1" }} days</p>
+                        <p class="task-cadence-note">Based on {{ task.completion_date_count }} recorded completions</p>
+                    {% else %}
+                        <p class="task-cadence">Not enough history ({{ task.completion_date_count }} date{{ task.completion_date_count|pluralize }})</p>
+                    {% endif %}
+                    {% if task.suggested_date %}<p class="task-suggestion">Suggested next date: <time datetime="{{ task.suggested_date|date:'Y-m-d' }}">{{ task.suggested_date|date:"M j, Y" }}</time> (estimate, not a deadline)</p>{% endif %}
+                </div>
+                <div class="task-actions">
+                    <a class="button button-primary" href="{% url 'completion_create' task.pk %}">Log done</a>
+                    <a class="button button-quiet" href="{% url 'task_detail' task.pk %}">View history</a>
+                    <a class="button button-quiet" href="{% url 'task_edit' task.pk %}">Edit task</a>
+                    <form method="post" action="{% url 'task_archive' task.pk %}">
+                        {% csrf_token %}
+                        <button class="button button-quiet" type="submit">Archive task</button>
+                    </form>
+                </div>
+            </article>
+        {% endfor %}
+    </section>
+{% else %}
+    <section class="empty-state" aria-labelledby="empty-title">
+        <div class="empty-icon" aria-hidden="true">✦</div>
+        <h2 id="empty-title">No tasks yet</h2>
+        <p>Add a household task to start a shared last-done record.</p>
+    </section>
+{% endif %}
+
+<p class="archive-link"><a href="{% url 'archived_tasks' %}">Archived tasks</a></p>
+{% endblock %}
